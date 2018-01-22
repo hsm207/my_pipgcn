@@ -17,6 +17,7 @@ class No_Conv:
     :param weight_matrix_dim: a 2-D tuple representing the dimension of the weight matrix
     :param dropout_rate: dropout rate for both dropout layers
     """
+
     def __init__(self, weight_matrix_dim, dropout_rate):
         self.dropout1 = Dropout(dropout_rate)
         self.dropout2 = Dropout(dropout_rate)
