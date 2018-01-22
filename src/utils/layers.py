@@ -105,6 +105,29 @@ class Dense:
         return x
 
 
+class Average_Predictions:
+    def __call__(self, x):
+        """
+        This layer computes the average predictions given a batch of tensors containing predictions for the
+        (ligand, receptor) and (receptor, ligand) pair.
+
+        :param x: A tensor of shape (batch_size*2, 1). The first batch_size tensors are the predictions for
+                  (ligand_i, receptor_i) pairs and the next batch_size of tensors are the predictions for the
+                  (receptor_i, ligand_i) pairs.
+        :return: A tensor of shape (batch_size, 1) representing the averaged predidctions of (ligand_i, receptor_i) and
+                 (receptor_i, ligand_i)
+        """
+        # split the input back into 2 list of tensors, one with the form (ligand_i, receptor_i) and the other
+        # (receptor_i, ligand_i)
+
+        representations = tf.split(x, 2, axis=0)
+
+        # compute the average of the prediction for (ligand_i, recepter_i) and (receptor_i, ligand_i), i.e.
+        # same pair of ligand and receptor, just in different order
+        mean_prediction = tf.reduce_mean(tf.stack(representations, axis=0), axis=0)
+        return mean_prediction
+
+
 # taken directly from the original author's source
 def initializer(init, shape):
     if init == "zero":
