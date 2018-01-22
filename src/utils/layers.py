@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.keras.layers import Activation, Dropout
+from tensorflow.python.keras.layers import Dense as Dense_
 
 
 class No_Conv:
@@ -71,6 +72,37 @@ class Merge:
         example_pairs_representation = tf.concat([lr_order, rl_order], axis=1)
 
         return example_pairs_representation
+
+
+class Dense:
+    def __init__(self, weight_matrix_dim, dropout_rate=0.5, activation_fn='relu'):
+        """
+        Create a fully connected layer.
+
+        Given an inpux x, this layer does the following:
+
+            1. Applies droppout
+            2. Applies a dense layer
+            3. Applies dropout again
+
+        The weights in the dense layer are initialized using He initialization and the biases are initialized to 0.
+
+        :param weight_matrix_dim: The dimension of the dense layer (num_of_inputs, num_of_outputs)
+        :param dropout_rate: The dropout layer for bot dropoout layers
+        :param activation_fn: A string representing the type of activation function to use at the dense layer
+        """
+        self.dropout1 = Dropout(dropout_rate)
+        self.dropout2 = Dropout(dropout_rate)
+        self.dense = Dense_(units=weight_matrix_dim[1], activation=activation_fn, bias_initializer='zeros',
+                            kernel_initializer=lambda *args, **kwargs: initializer('he', weight_matrix_dim),
+                            dtype=tf.float64)
+
+    def __call__(self, x):
+        x = self.dropout1(x)
+        x = self.dense(x)
+        x = self.dropout2(x)
+
+        return x
 
 
 # taken directly from the original author's source
