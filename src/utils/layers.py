@@ -39,6 +39,40 @@ class No_Conv:
         return x
 
 
+class Merge:
+    def __call__(self, vertex1, vertex2, example_pairs):
+        """
+        Return the feature representations of the example pairs
+
+        :param vertex1: Feature representation of the ligand residue
+        :param vertex2: Feature representation of the receptor residue
+        :param example_pairs: The example pairs we want to classify
+        :return: a tensor of shape (number of examples in example_pairs * 2, vertex_feature_dimensions * 2)
+        """
+        # collect the features for the ligand protein residue
+        out1 = tf.gather(vertex1, example_pairs[:, 0])
+
+        # collect the features for the receptor protein residue
+        out2 = tf.gather(vertex2, example_pairs[:, 1])
+
+        # we will present to the model the representation of an example pair in both possible orders ie
+        # (ligand_i, receptor_i) and (receptor_i, ligand_i)
+        # We do this because the role of ligand/receptor is arbitrary, so we would like to
+        # learn a scoring function that is independent of the order in which the two residues are presented to
+        # the network.
+
+        # a list of representations starting from ligands then receptors
+        lr_order = tf.concat([out1, out2], axis=0)
+        # a lilst of representations starting from receptors then ligands
+        rl_order = tf.concat([out2, out1], axis=0)
+
+        # stack the list sideways to get the paired representations for both (ligand_i, receptor_i) and
+        # (receptor_i, ligand_i) form
+        example_pairs_representation = tf.concat([lr_order, rl_order], axis=1)
+
+        return example_pairs_representation
+
+
 # taken directly from the original author's source
 def initializer(init, shape):
     if init == "zero":
