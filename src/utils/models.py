@@ -58,5 +58,5 @@ class NoConvolutionModel:
         # Tensor of unknown shape. "
         # See https://stackoverflow.com/questions/35892412/tensorflow-dense-gradient-explanation for potential
         # solutions
-        train_op = self.opt.minimize(loss)
+        train_op = self.opt.minimize(loss, tf.train.get_or_create_global_step())
         return train_op
