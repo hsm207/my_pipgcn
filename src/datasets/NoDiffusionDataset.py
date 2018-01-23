@@ -9,6 +9,7 @@ from tensorflow.python.keras.utils import get_file
 
 class NoDiffusionDataset:
     def __init__(self, batch_size=128, repeat=1):
+        # TODO: Set separate argument for test and batch size
         self.dataset_dir = '../datasets'
 
         self.trainfile = 'train.cpkl'
