@@ -8,8 +8,7 @@ from tensorflow.python.keras.utils import get_file
 
 
 class NoDiffusionDataset:
-    def __init__(self, batch_size=128, repeat=1):
-        # TODO: Set separate argument for test and batch size
+    def __init__(self, batch_size=(128, 2000), repeat=1):
         self.dataset_dir = '../datasets'
 
         self.trainfile = 'train.cpkl'
@@ -18,7 +17,8 @@ class NoDiffusionDataset:
         self.testfile = 'test.cpkl'
         self.testurl = 'https://zenodo.org/record/1127774/files/test.cpkl.gz'
 
-        self.batch_size = batch_size
+        self.train_batch_size = batch_size[0]
+        self.test_batch_size = batch_size[1]
         self.repeat = repeat
 
     def _downnload_file(self, filename, fileurl):
@@ -54,11 +54,14 @@ class NoDiffusionDataset:
             ds = tf.data.Dataset.zip((protein_ds, paired_ds))
 
             if type == 'train':
-                ds = ds.shuffle(buffer_size=100000)
+                ds = ds.shuffle(buffer_size=100000) \
+                    .batch(self.train_batch_size)
 
-            ds = ds \
-                .batch(self.batch_size) \
-                .repeat(self.repeat)
+            else:
+
+                ds = ds.batch(self.test_batch_size)
+
+            ds = ds.repeat(self.repeat)
 
             features, (example, label) = ds.make_one_shot_iterator().get_next()
 
