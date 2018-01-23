@@ -32,7 +32,6 @@ class NoDiffusionDataset:
 
     def _build_protein_dataset(self, protein_data, type='train'):
         def input_fn():
-
             # complex_code is not a feature used in the models
             protein_features = {k: v for k, v in protein_data.items() if k not in ('label', 'complex_code')}
 
@@ -43,7 +42,7 @@ class NoDiffusionDataset:
             protein_feat_values = [np.expand_dims(val, 0) for val in protein_features.values()]
 
             # repeat the protein features batch_size times
-            protein_ds = tf.data.Dataset.from_tensor_slices((*protein_feat_values,)) \
+            protein_ds = tf.data.Dataset.from_tensor_slices(tuple(feat_val for feat_val in protein_feat_values)) \
                 .map(lambda *vals: dict(zip(protein_feat_labels, vals))) \
                 .repeat()
 
