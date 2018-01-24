@@ -2,6 +2,8 @@ import numpy as np
 import tensorflow as tf
 from sklearn.metrics import auc, roc_curve
 
+from utils.misc import current_time
+
 
 class AUC_Calculator:
     def __init__(self):
@@ -45,7 +47,7 @@ class AUC_Calculator:
         :return: A float representing the mean ROC AUC
         """
         for i, input_fn in enumerate(input_fns, 1):
-            print('Computing ROC AUC for input function {}...'.format(i))
+            print('{}: Computing ROC AUC for input function {}...\n'.format(current_time(), i))
             predictions = estimator.predict(input_fn)
             # extract the prediction values from the estimator's predictions
             predictions = np.fromiter((obs['score'][0] for obs in predictions), dtype=np.float64)
