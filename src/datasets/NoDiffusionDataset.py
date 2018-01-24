@@ -8,7 +8,7 @@ from tensorflow.python.keras.utils import get_file
 
 
 class NoDiffusionDataset:
-    def __init__(self, batch_size=(128, 2000), repeat=1):
+    def __init__(self, batch_size=(128, 2000), repeat=1, take=-1):
         self.dataset_dir = '../datasets'
 
         self.trainfile = 'train.cpkl'
@@ -20,6 +20,8 @@ class NoDiffusionDataset:
         self.train_batch_size = batch_size[0]
         self.test_batch_size = batch_size[1]
         self.repeat = repeat
+
+        self.n_paired_examples = take
 
     def _downnload_file(self, filename, fileurl):
         filepath = os.path.abspath(os.path.join(self.dataset_dir, filename))
@@ -49,7 +51,8 @@ class NoDiffusionDataset:
             # the first 2 columns in the 'label' key are part of the features used in the model
             # the 3rd column in the 'label' key is the target variable
             paired_ds = tf.data.Dataset.from_tensor_slices(paired_examples) \
-                .map(lambda row: (row[:2], {'label': row[2]}))
+                .map(lambda row: (row[:2], {'label': row[2]})) \
+                .take(self.n_paired_examples)
 
             ds = tf.data.Dataset.zip((protein_ds, paired_ds))
 
