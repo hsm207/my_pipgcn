@@ -40,6 +40,68 @@ class No_Conv:
         return x
 
 
+class Node_Avg:
+
+    def __init__(self, weight_matrix_dim, dropout_rate):
+        """
+        Implements the convolution operator described by Equation 1 in the paper
+
+        :param weight_matrix_dim: a 2-D tuple representing the dimension of the weight matrix
+        :param dropout_rate: dropout rate for both dropout layers
+        """
+        self.dropout = Dropout(dropout_rate)
+        self.center_weights = Dense_(units=weight_matrix_dim[1],
+                                     activation='linear',
+                                     use_bias=False,
+                                     kernel_initializer=lambda *args, **kwargs: initializer('he', weight_matrix_dim),
+                                     dtype=tf.float64,
+                                     name='Wc')
+        self.nh_weights = Dense_(units=weight_matrix_dim[1],
+                                 activation='linear',
+                                 use_bias=False,
+                                 kernel_initializer=lambda *args, **kwargs: initializer('he', weight_matrix_dim),
+                                 dtype=tf.float64,
+                                 name='Wn')
+
+        self.b = lambda: tf.get_variable(name='b',
+                                         initializer=tf.zeros(weight_matrix_dim[1], dtype=tf.float64),
+                                         dtype=tf.float64)
+
+        self.relu = Activation('relu', name='ReLu')
+
+    def __call__(self, vertices, nh_indices):
+        # the indices of the neighbours of each residue in vertex
+        nh_indices = tf.squeeze(nh_indices, axis=2)
+
+        # count the number of neighbours for each residue in vertex
+        # TODO: Figure out why need to add 1
+        nh_sizes = tf.count_nonzero(nh_indices + 1, axis=1, dtype=tf.float64, keep_dims=True)
+
+        # the convolution operator's center node term
+        Zc = self.center_weights(vertices)
+
+        # to calculate the convolution the convolution operator's neighbourhood term, we multiply all residues
+        # in the vertices (each row) with the neighbourhood weight matrix. Then, using nh_indices, we take only
+        # the values that are neighbourhood of a given residue
+        v_Wn = self.nh_weights(vertices)
+
+        Zn = tf.gather(v_Wn, nh_indices)  # (n_vertices, n_neighbours, n_v_Wn_columns)
+
+        # now we element-wise sum all the neighbours for a given vertex
+        Zn = tf.reduce_sum(Zn, axis=1)
+
+        # divide each vertex feature with the number of neighbours
+        Zn = tf.divide(Zn, tf.maximum(nh_sizes, tf.ones_like(nh_sizes, dtype=tf.float64)))
+
+        sig = Zc + Zn + self.b()
+
+        Z = self.relu(sig)
+
+        Z = self.dropout(Z)
+
+        return Z
+
+
 class Merge:
     def __call__(self, vertex1, vertex2, example_pairs):
         """
