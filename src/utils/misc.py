@@ -87,7 +87,7 @@ class Experiment:
         savepath = os.path.join(params['model_dir'], params['model_name'], 'experiment_summary.csv')
         data = {'model': params['model_name'], 'mean_roc_auc': np.mean(self.mean_roc_auc),
                 'sd_roc_auc': np.std(self.mean_roc_auc)}
-        df = pd.Series(data).to_frame().transpose()[['model', 'mean', 'sd']]
+        df = pd.Series(data).to_frame().transpose()[['model', 'mean_roc_auc', 'sd_roc_auc']]
         df.to_csv(savepath, header=True, index=False)
         return df
 
