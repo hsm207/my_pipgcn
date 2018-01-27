@@ -63,7 +63,7 @@ class NoConvolutionModel:
 
 
 # TODO: Rewrite these classes so that the common functions are reusable
-class Node_Average:
+class NodeAverageModel:
     def __init__(self, legs_output_dims, dropout_rate=0.5, neg_wt=0.1, learning_rate=0.1):
         # a list of layers for the legs
         # the weight matrix for the first leg layer has height 70 because the input i.e. ligand and receptor
