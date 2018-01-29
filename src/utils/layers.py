@@ -172,6 +172,110 @@ class Node_Edge_Avg:
         return Ze
 
 
+class Order_Dependent:
+    def __init__(self, weight_matrix_dim, dropout_rate):
+        self.dropout = Dropout(dropout_rate)
+        self.center_weights = Dense_(units=weight_matrix_dim[1],
+                                     activation='linear',
+                                     use_bias=False,
+                                     kernel_initializer=lambda *args, **kwargs: initializer('he', weight_matrix_dim),
+                                     dtype=tf.float64,
+                                     name='Wc')
+
+        self.nh_weights = self._build_nh_weights(weight_matrix_dim)
+
+        self.edge_weights = self._build_edge_weights(weight_matrix_dim[1])
+
+        self.b = lambda: tf.get_variable(name='b',
+                                         initializer=tf.zeros(weight_matrix_dim[1], dtype=tf.float64),
+                                         dtype=tf.float64)
+
+        self.relu = Activation('relu', name='ReLu')
+
+    def __call__(self, vertices, edges, nh_indices):
+        nh_indices = tf.squeeze(nh_indices, axis=2)
+        nh_size = nh_indices.get_shape()[1].value
+
+        # the convolution operator's neighbourhood term. See Node_Average's __call__ method for details
+        Wn = self.nh_weights(nh_size)
+
+        # for neighbour weight i, multiply it by by neighbour i across all the vertices
+        Zn = tf.add_n([wt(tf.gather(vertices, nh_indices[:, i])) for i, wt in enumerate(Wn)])
+        Zn = tf.divide(Zn, nh_size)
+
+        # the convolution operator's edges term
+        Ze = self._compute_edges_term(edges, nh_size)
+
+        # the convolution operator's center node term
+        Zc = self.center_weights(vertices)
+
+        sig = Zc + Zn + Ze + self.b()
+
+        Z = self.relu(sig)
+
+        Z = self.dropout(Z)
+
+        return Z
+
+    def _build_nh_weights(self, weight_matrix_dim):
+        """
+        Utility funciton to build the unique weights for each neighbour
+        :param weight_matrix_dim: The dimension of the weight matrix to build
+        :return: A single argument function that takes the number of weights to build and returns
+                 a list of those weights
+        """
+
+        def nh_weights_builder(n_neighbours):
+            """
+            Returns a list of tensors representing the unique weights for each neighbour
+            :param n_neighbours: number of tensors to create in the list
+            :return: A list of tensors
+            """
+            nh_weights = [Dense_(units=weight_matrix_dim[1],
+                                 activation='linear',
+                                 use_bias=False,
+                                 kernel_initializer=lambda *args, **kwargs: initializer('he', weight_matrix_dim),
+                                 dtype=tf.float64,
+                                 name='Wn_{}'.format(i + 1)) for i in range(n_neighbours)]
+
+            return nh_weights
+
+        return nh_weights_builder
+
+    def _build_edge_weights(self, n_filters):
+        """
+        Utility function to build the unique weights for the edges.
+
+        The number of unique weights are is the same as the number of neighbours for a given residue
+
+        :param n_filters: number of filters i.e. columns for the weight matrices
+        :return: A function that takes the number of neighbours as an argument and returns a tensor of shape
+                 (n_neighbours, 2, n_filters)
+        """
+
+        def edge_weights_buildfer(n_neightbours):
+            edge_weights = tf.get_variable(name='We',
+                                           initializer=initializer('he', (n_neightbours, 2, n_filters)),
+                                           dtype=tf.float64)
+            return edge_weights
+
+        return edge_weights_buildfer
+
+    def _compute_edges_term(self, edges, nh_size):
+        # the shape of edges is (number of vertices, number of neighbours, 2)
+        # the shape of the edge weights is (neighbours, 2, number of filters)
+        # it is easier to compute the convolution operator on the edges using tensordot rather than using
+        # Dense layers
+
+        # the convolution operator (with unique weights) on each feature on each neighbour for all vertices
+        Ze = tf.tensordot(edges, self.edge_weights(nh_size), axes=[[2, 1], [0, 1]])
+
+        # divide each vertex in Ze by its number of neighbours
+        Ze = tf.divide(Ze, 20)
+
+        return Ze
+
+
 class Merge:
     def __call__(self, vertex1, vertex2, example_pairs):
         """
