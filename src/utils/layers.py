@@ -74,7 +74,6 @@ class Node_Avg:
         nh_indices = tf.squeeze(nh_indices, axis=2)
 
         # count the number of neighbours for each residue in vertex
-        # TODO: Figure out why need to add 1
         nh_sizes = tf.count_nonzero(nh_indices + 1, axis=1, dtype=tf.float64, keep_dims=True)
 
         # the convolution operator's center node term
