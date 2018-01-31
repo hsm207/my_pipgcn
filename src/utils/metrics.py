@@ -1,3 +1,7 @@
+"""
+This module implements the ROC AUC metric that is used to evaluate the models.
+"""
+
 import numpy as np
 import tensorflow as tf
 from sklearn.metrics import auc, roc_curve

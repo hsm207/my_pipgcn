@@ -1,3 +1,7 @@
+"""
+This module contains stuff to help run the experiments.
+
+"""
 import datetime
 import os
 
@@ -57,11 +61,14 @@ class Experiment:
 
     def _create_config(self, params):
         model_dir = os.path.join(params['model_dir'], params['model_name'])
+        sess_config = tf.ConfigProto()
+        sess_config.gpu_options.allow_growth = True
         config = tf.estimator.RunConfig(model_dir=model_dir,
                                         tf_random_seed=params['tf_seed'],
                                         keep_checkpoint_max=2,
                                         save_summary_steps=1000000,
-                                        save_checkpoints_steps=100000)
+                                        save_checkpoints_steps=100000,
+                                        session_config=sess_config)
 
         return config
 
@@ -87,7 +94,7 @@ class Experiment:
         savepath = os.path.join(params['model_dir'], params['model_name'], 'experiment_summary.csv')
         data = {'model': params['model_name'], 'mean_roc_auc': np.mean(self.mean_roc_auc),
                 'sd_roc_auc': np.std(self.mean_roc_auc)}
-        df = pd.Series(data).to_frame().transpose()[['model', 'mean', 'sd']]
+        df = pd.Series(data).to_frame().transpose()[['model', 'mean_roc_auc', 'sd_roc_auc']]
         df.to_csv(savepath, header=True, index=False)
         return df
 

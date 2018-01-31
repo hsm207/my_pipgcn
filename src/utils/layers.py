@@ -1,3 +1,6 @@
+"""
+This module contains the classes that are used to build models.
+"""
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.keras.layers import Activation, Dropout
@@ -40,6 +43,255 @@ class No_Conv:
         return x
 
 
+class Node_Avg:
+    """
+    Implements the convolution operator described by Equation 1 in the paper
+
+    :param weight_matrix_dim: a 2-D tuple representing the dimension of the weight matrix
+    :param dropout_rate: dropout rate for both dropout layers
+    """
+
+    def __init__(self, weight_matrix_dim, dropout_rate):
+        self.dropout = Dropout(dropout_rate)
+        self.center_weights = Dense_(units=weight_matrix_dim[1],
+                                     activation='linear',
+                                     use_bias=False,
+                                     kernel_initializer=lambda *args, **kwargs: initializer('he', weight_matrix_dim),
+                                     dtype=tf.float64,
+                                     name='Wc')
+        self.nh_weights = Dense_(units=weight_matrix_dim[1],
+                                 activation='linear',
+                                 use_bias=False,
+                                 kernel_initializer=lambda *args, **kwargs: initializer('he', weight_matrix_dim),
+                                 dtype=tf.float64,
+                                 name='Wn')
+
+        self.b = lambda: tf.get_variable(name='b',
+                                         initializer=tf.zeros(weight_matrix_dim[1], dtype=tf.float64),
+                                         dtype=tf.float64)
+
+        self.relu = Activation('relu', name='ReLu')
+
+    def __call__(self, vertices, nh_indices):
+        # the indices of the neighbours of each residue in vertex
+        nh_indices = tf.squeeze(nh_indices, axis=2)
+
+        # count the number of neighbours for each residue in vertex
+        nh_sizes = tf.count_nonzero(nh_indices + 1, axis=1, dtype=tf.float64, keep_dims=True)
+
+        # the convolution operator's center node term
+        Zc = self.center_weights(vertices)
+
+        # to calculate the convolution the convolution operator's neighbourhood term, we multiply all residues
+        # in the vertices (each row) with the neighbourhood weight matrix. Then, using nh_indices, we take only
+        # the values that are neighbourhood of a given residue
+        v_Wn = self.nh_weights(vertices)
+
+        Zn = tf.gather(v_Wn, nh_indices)  # (n_vertices, n_neighbours, n_v_Wn_columns)
+
+        # now we element-wise sum all the neighbours for a given vertex
+        Zn = tf.reduce_sum(Zn, axis=1)
+
+        # divide each vertex feature with the number of neighbours
+        Zn = tf.divide(Zn, tf.maximum(nh_sizes, tf.ones_like(nh_sizes, dtype=tf.float64)))
+
+        sig = Zc + Zn + self.b()
+
+        Z = self.relu(sig)
+
+        Z = self.dropout(Z)
+
+        return Z
+
+
+class Node_Edge_Avg:
+    """
+    Implements the convolution operator described by Equation 2 in the paper
+
+    :param weight_matrix_dim: a 2-D tuple representing the dimension of the weight matrix
+    :param dropout_rate: dropout rate for both dropout layers
+    """
+
+    def __init__(self, weight_matrix_dim, dropout_rate):
+        self.dropout = Dropout(dropout_rate)
+        self.center_weights = Dense_(units=weight_matrix_dim[1],
+                                     activation='linear',
+                                     use_bias=False,
+                                     kernel_initializer=lambda *args, **kwargs: initializer('he', weight_matrix_dim),
+                                     dtype=tf.float64,
+                                     name='Wc')
+        self.nh_weights = Dense_(units=weight_matrix_dim[1],
+                                 activation='linear',
+                                 use_bias=False,
+                                 kernel_initializer=lambda *args, **kwargs: initializer('he', weight_matrix_dim),
+                                 dtype=tf.float64,
+                                 name='Wn')
+
+        # the edges have 2 features only
+        self.edge_weights = lambda: tf.get_variable(name='We',
+                                                    initializer=initializer('he', (2, weight_matrix_dim[1])),
+                                                    dtype=tf.float64)
+
+        self.b = lambda: tf.get_variable(name='b',
+                                         initializer=tf.zeros(weight_matrix_dim[1], dtype=tf.float64),
+                                         dtype=tf.float64)
+
+        self.relu = Activation('relu', name='ReLu')
+
+    def __call__(self, vertices, edges, nh_indices):
+        # the convolution operator's neighbourhood term. See Node_Average's __call__ method for details
+
+        nh_indices = tf.squeeze(nh_indices, axis=2)
+        nh_sizes = tf.count_nonzero(nh_indices + 1, axis=1, dtype=tf.float64, keep_dims=True)
+
+        v_Wn = self.nh_weights(vertices)
+        Zn = tf.gather(v_Wn, nh_indices)
+        Zn = tf.reduce_sum(Zn, axis=1)
+        Zn = tf.divide(Zn, tf.maximum(nh_sizes, tf.ones_like(nh_sizes, dtype=tf.float64)))
+
+        # the convolution operator's edges term
+        Ze = self._compute_edges_term(edges, nh_sizes)
+
+        # the convolution operator's center node term
+        Zc = self.center_weights(vertices)
+
+        sig = Zc + Zn + Ze + self.b()
+
+        Z = self.relu(sig)
+
+        Z = self.dropout(Z)
+
+        return Z
+
+    def _compute_edges_term(self, edges, nh_sizes):
+        # the shape of edges is (number of vertices, number of neighbours, 2)
+        # the shape of the edge weights is (2, number of filters)
+        # it is easier to compute the convolution operator on the edges using tensordot rather than using
+        # Dense layers
+
+        # the convolution operator on each feature on each neighbour for all vertices
+        e_We = tf.tensordot(edges, self.edge_weights(), axes=[[2], [0]])
+
+        # do an element wise sum over all the neighbours for each vertex
+        Ze = tf.reduce_sum(e_We, axis=1)
+
+        # divide each vertex in Ze by its number of neighbours
+        Ze = tf.divide(Ze, tf.maximum(nh_sizes, tf.ones_like(nh_sizes, dtype=tf.float64)))
+
+        return Ze
+
+
+class Order_Dependent:
+    """
+    Implements the convolution operator described by Equation 3 in the paper
+
+    :param weight_matrix_dim: a 2-D tuple representing the dimension of the weight matrix
+    :param dropout_rate: dropout rate for both dropout layers
+    """
+
+    def __init__(self, weight_matrix_dim, dropout_rate):
+        self.dropout = Dropout(dropout_rate)
+        self.center_weights = Dense_(units=weight_matrix_dim[1],
+                                     activation='linear',
+                                     use_bias=False,
+                                     kernel_initializer=lambda *args, **kwargs: initializer('he', weight_matrix_dim),
+                                     dtype=tf.float64,
+                                     name='Wc')
+
+        self.nh_weights = self._build_nh_weights(weight_matrix_dim)
+
+        self.edge_weights = self._build_edge_weights(weight_matrix_dim[1])
+
+        self.b = lambda: tf.get_variable(name='b',
+                                         initializer=tf.zeros(weight_matrix_dim[1], dtype=tf.float64),
+                                         dtype=tf.float64)
+
+        self.relu = Activation('relu', name='ReLu')
+
+    def __call__(self, vertices, edges, nh_indices):
+        nh_indices = tf.squeeze(nh_indices, axis=2)
+        nh_size = nh_indices.get_shape()[1].value
+
+        # the convolution operator's neighbourhood term. See Node_Average's __call__ method for details
+        Wn = self.nh_weights(nh_size)
+
+        # for neighbour weight i, multiply it by by neighbour i across all the vertices
+        Zn = tf.add_n([wt(tf.gather(vertices, nh_indices[:, i])) for i, wt in enumerate(Wn)])
+        Zn = tf.divide(Zn, nh_size)
+
+        # the convolution operator's edges term
+        Ze = self._compute_edges_term(edges, nh_size)
+
+        # the convolution operator's center node term
+        Zc = self.center_weights(vertices)
+
+        sig = Zc + Zn + Ze + self.b()
+
+        Z = self.relu(sig)
+
+        Z = self.dropout(Z)
+
+        return Z
+
+    def _build_nh_weights(self, weight_matrix_dim):
+        """
+        Utility function to build the unique weights for each neighbour
+        :param weight_matrix_dim: The dimension of the weight matrix to build
+        :return: A single argument function that takes the number of weights to build and returns
+                 a list of those weights
+        """
+
+        def nh_weights_builder(n_neighbours):
+            """
+            Returns a list of tensors representing the unique weights for each neighbour
+            :param n_neighbours: number of tensors to create in the list
+            :return: A list of tensors
+            """
+            nh_weights = [Dense_(units=weight_matrix_dim[1],
+                                 activation='linear',
+                                 use_bias=False,
+                                 kernel_initializer=lambda *args, **kwargs: initializer('he', weight_matrix_dim),
+                                 dtype=tf.float64,
+                                 name='Wn_{}'.format(i + 1)) for i in range(n_neighbours)]
+
+            return nh_weights
+
+        return nh_weights_builder
+
+    def _build_edge_weights(self, n_filters):
+        """
+        Utility function to build the unique weights for the edges.
+
+        The number of unique weights are is the same as the number of neighbours for a given residue
+
+        :param n_filters: number of filters i.e. columns for the weight matrices
+        :return: A function that takes the number of neighbours as an argument and returns a tensor of shape
+                 (n_neighbours, 2, n_filters)
+        """
+
+        def edge_weights_buildfer(n_neightbours):
+            edge_weights = tf.get_variable(name='We',
+                                           initializer=initializer('he', (n_neightbours, 2, n_filters)),
+                                           dtype=tf.float64)
+            return edge_weights
+
+        return edge_weights_buildfer
+
+    def _compute_edges_term(self, edges, nh_size):
+        # the shape of edges is (number of vertices, number of neighbours, 2)
+        # the shape of the edge weights is (neighbours, 2, number of filters)
+        # it is easier to compute the convolution operator on the edges using tensordot rather than using
+        # Dense layers
+
+        # the convolution operator (with unique weights) on each feature on each neighbour for all vertices
+        Ze = tf.tensordot(edges, self.edge_weights(nh_size), axes=[[2, 1], [0, 1]])
+
+        # divide each vertex in Ze by its number of neighbours
+        Ze = tf.divide(Ze, 20)
+
+        return Ze
+
+
 class Merge:
     def __call__(self, vertex1, vertex2, example_pairs):
         """
@@ -75,22 +327,23 @@ class Merge:
 
 
 class Dense:
+    """
+    Create a fully connected layer.
+
+    Given an inpux x, this layer does the following:
+
+        1. Applies droppout
+        2. Applies a dense layer
+        3. Applies dropout again
+
+    The weights in the dense layer are initialized using He initialization and the biases are initialized to 0.
+
+    :param weight_matrix_dim: The dimension of the dense layer (num_of_inputs, num_of_outputs)
+    :param dropout_rate: The dropout layer for bot dropoout layers
+    :param activation_fn: A string representing the type of activation function to use at the dense layer
+    """
+
     def __init__(self, weight_matrix_dim, dropout_rate=0.5, activation_fn='relu'):
-        """
-        Create a fully connected layer.
-
-        Given an inpux x, this layer does the following:
-
-            1. Applies droppout
-            2. Applies a dense layer
-            3. Applies dropout again
-
-        The weights in the dense layer are initialized using He initialization and the biases are initialized to 0.
-
-        :param weight_matrix_dim: The dimension of the dense layer (num_of_inputs, num_of_outputs)
-        :param dropout_rate: The dropout layer for bot dropoout layers
-        :param activation_fn: A string representing the type of activation function to use at the dense layer
-        """
         self.dropout1 = Dropout(dropout_rate)
         self.dropout2 = Dropout(dropout_rate)
         self.dense = Dense_(units=weight_matrix_dim[1], activation=activation_fn, bias_initializer='zeros',
@@ -128,7 +381,8 @@ class Average_Predictions:
         return mean_prediction
 
 
-# taken directly from the original author's source
+# taken directly from the original author's source code.
+# returns a tensor of zeros or initialized with He initialization
 def initializer(init, shape):
     if init == "zero":
 
