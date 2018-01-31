@@ -5,6 +5,16 @@ from utils.losses import Weighted_CrossEntropy
 
 
 class NoConvolutionModel:
+    """
+    Implements the No Convolution model as described in Table 2
+
+    :param legs_output_dims: A list of integers the denoting the number of filters for each leg. E.g. [256, 512)
+                             means two legs where the first leg has 256 filters and the second leg has 512 filters.
+    :param dropout_rate: Percentage of activations to drop at each leg
+    :param neg_wt: The weight to apply to the negative examples when computing the loss function
+    :param learning_rate: The learning rate to apply to the optimizer
+    """
+
     def __init__(self, legs_output_dims, dropout_rate=0.5, neg_wt=0.1, learning_rate=0.1):
         # a list of layers for the legs
         # the weight matrix for the first leg layer has height 70 because the input i.e. ligand and receptor
@@ -26,6 +36,12 @@ class NoConvolutionModel:
         self.opt = tf.train.GradientDescentOptimizer(learning_rate)
 
     def __call__(self, vertex1, vertex2, examples):
+        """
+        The model's forward pass
+
+        :param features: A dictionary of tensors for the model to use as features
+        :return: A tensor of shape (batch_size, average prediction)
+        """
         # since the vertex1 and vertex2 inputs are repeated batch_size times, we can just pass the first element
         # to extract their feature representations
 
@@ -64,6 +80,16 @@ class NoConvolutionModel:
 
 # TODO: Rewrite these classes so that the common functions are reusable
 class NodeAverageModel:
+    """
+    Implements the Node Average (Equation 1) model as described in Table 2
+
+    :param legs_output_dims: A list of integers the denoting the number of filters for each leg. E.g. [256, 512)
+                             means two legs where the first leg has 256 filters and the second leg has 512 filters.
+    :param dropout_rate: Percentage of activations to drop at each leg
+    :param neg_wt: The weight to apply to the negative examples when computing the loss function
+    :param learning_rate: The learning rate to apply to the optimizer
+    """
+
     def __init__(self, legs_output_dims, dropout_rate=0.5, neg_wt=0.1, learning_rate=0.1):
         # a list of layers for the legs
         # the weight matrix for the first leg layer has height 70 because the input i.e. ligand and receptor
@@ -85,6 +111,12 @@ class NodeAverageModel:
         self.opt = tf.train.GradientDescentOptimizer(learning_rate)
 
     def __call__(self, features):
+        """
+        The model's forward pass
+
+        :param features: A dictionary of tensors for the model to use as features
+        :return: A tensor of shape (batch_size, average prediction)
+        """
         # since the vertex1 and vertex2 inputs (and all other protein features) are repeated batch_size times, we
         # can just pass the first element to extract their feature representations
 
@@ -132,6 +164,16 @@ class NodeAverageModel:
 
 
 class NodeAverageEdgeModel:
+    """
+    Implements the Node and Edge Average (Equation 2) model as described in Table 2
+
+    :param legs_output_dims: A list of integers the denoting the number of filters for each leg. E.g. [256, 512)
+                             means two legs where the first leg has 256 filters and the second leg has 512 filters.
+    :param dropout_rate: Percentage of activations to drop at each leg
+    :param neg_wt: The weight to apply to the negative examples when computing the loss function
+    :param learning_rate: The learning rate to apply to the optimizer
+    """
+
     def __init__(self, legs_output_dims, dropout_rate=0.5, neg_wt=0.1, learning_rate=0.1):
         # a list of layers for the legs
         # the weight matrix for the first leg layer has height 70 because the input i.e. ligand and receptor
@@ -153,6 +195,12 @@ class NodeAverageEdgeModel:
         self.opt = tf.train.GradientDescentOptimizer(learning_rate)
 
     def __call__(self, features):
+        """
+        The model's forward pass
+
+        :param features: A dictionary of tensors for the model to use as features
+        :return: A tensor of shape (batch_size, average prediction)
+        """
         # since the vertex1 and vertex2 inputs (and all other protein features) are repeated batch_size times, we
         # can just pass the first element to extract their feature representations
 
@@ -205,6 +253,16 @@ class NodeAverageEdgeModel:
 
 
 class OrderDependentModel:
+    """
+    Implements the Order Dependent (Equation 3) model as described in Table 2
+
+    :param legs_output_dims: A list of integers the denoting the number of filters for each leg. E.g. [256, 512)
+                             means two legs where the first leg has 256 filters and the second leg has 512 filters.
+    :param dropout_rate: Percentage of activations to drop at each leg
+    :param neg_wt: The weight to apply to the negative examples when computing the loss function
+    :param learning_rate: The learning rate to apply to the optimizer
+    """
+
     def __init__(self, legs_output_dims, dropout_rate=0.5, neg_wt=0.1, learning_rate=0.1):
         # a list of layers for the legs
         # the weight matrix for the first leg layer has height 70 because the input i.e. ligand and receptor
@@ -226,6 +284,12 @@ class OrderDependentModel:
         self.opt = tf.train.GradientDescentOptimizer(learning_rate)
 
     def __call__(self, features):
+        """
+        The model's forward pass
+
+        :param features: A dictionary of tensors for the model to use as features
+        :return: A tensor of shape (batch_size, average prediction)
+        """
         # since the vertex1 and vertex2 inputs (and all other protein features) are repeated batch_size times, we
         # can just pass the first element to extract their feature representations
 
