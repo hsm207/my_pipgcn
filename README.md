@@ -13,5 +13,13 @@ The code in this repository wil reproduce the results described in Table 2 for t
 * TensorFlow 1.4.0
 * scikit-learn 0.19.1
 
+## Usage
+
+The scripts to train and evaluate the Node Average (Equation 1), Node and Edge Average (Equation 2) and Order Dependent (Equation 3) models are in `src/node_average.py`, `src/node_and_edge_average.py` and `src/order_dependent.py` respectively. The scripts will save the results into the `/model_dir` directory based on the values in the `params` dictionary. The saved results consist of the model's graph, last 2 checkpoints and a csv of the ROC AUC on the test set (filename: eperiment_summary.csv).
+
+## Results
+
+I had enough GPU credits to only run the Node Average (Equation 1) 1 layer model once (in the paper, each model was run 10 times and the average ROC AUC over the 10 trials was reported). The results are saved in `/model_dir/node_average/node_avg_1_layer`. The ROC AUC from this run is 0.854 vs the paper's 0.864. 
+
 
 
