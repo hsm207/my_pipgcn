@@ -41,14 +41,14 @@ class No_Conv:
 
 
 class Node_Avg:
+    """
+    Implements the convolution operator described by Equation 1 in the paper
+
+    :param weight_matrix_dim: a 2-D tuple representing the dimension of the weight matrix
+    :param dropout_rate: dropout rate for both dropout layers
+    """
 
     def __init__(self, weight_matrix_dim, dropout_rate):
-        """
-        Implements the convolution operator described by Equation 1 in the paper
-
-        :param weight_matrix_dim: a 2-D tuple representing the dimension of the weight matrix
-        :param dropout_rate: dropout rate for both dropout layers
-        """
         self.dropout = Dropout(dropout_rate)
         self.center_weights = Dense_(units=weight_matrix_dim[1],
                                      activation='linear',
@@ -102,6 +102,13 @@ class Node_Avg:
 
 
 class Node_Edge_Avg:
+    """
+    Implements the convolution operator described by Equation 2 in the paper
+
+    :param weight_matrix_dim: a 2-D tuple representing the dimension of the weight matrix
+    :param dropout_rate: dropout rate for both dropout layers
+    """
+
     def __init__(self, weight_matrix_dim, dropout_rate):
         self.dropout = Dropout(dropout_rate)
         self.center_weights = Dense_(units=weight_matrix_dim[1],
@@ -172,6 +179,13 @@ class Node_Edge_Avg:
 
 
 class Order_Dependent:
+    """
+    Implements the convolution operator described by Equation 3 in the paper
+
+    :param weight_matrix_dim: a 2-D tuple representing the dimension of the weight matrix
+    :param dropout_rate: dropout rate for both dropout layers
+    """
+
     def __init__(self, weight_matrix_dim, dropout_rate):
         self.dropout = Dropout(dropout_rate)
         self.center_weights = Dense_(units=weight_matrix_dim[1],
@@ -218,7 +232,7 @@ class Order_Dependent:
 
     def _build_nh_weights(self, weight_matrix_dim):
         """
-        Utility funciton to build the unique weights for each neighbour
+        Utility function to build the unique weights for each neighbour
         :param weight_matrix_dim: The dimension of the weight matrix to build
         :return: A single argument function that takes the number of weights to build and returns
                  a list of those weights
@@ -310,22 +324,23 @@ class Merge:
 
 
 class Dense:
+    """
+    Create a fully connected layer.
+
+    Given an inpux x, this layer does the following:
+
+        1. Applies droppout
+        2. Applies a dense layer
+        3. Applies dropout again
+
+    The weights in the dense layer are initialized using He initialization and the biases are initialized to 0.
+
+    :param weight_matrix_dim: The dimension of the dense layer (num_of_inputs, num_of_outputs)
+    :param dropout_rate: The dropout layer for bot dropoout layers
+    :param activation_fn: A string representing the type of activation function to use at the dense layer
+    """
+
     def __init__(self, weight_matrix_dim, dropout_rate=0.5, activation_fn='relu'):
-        """
-        Create a fully connected layer.
-
-        Given an inpux x, this layer does the following:
-
-            1. Applies droppout
-            2. Applies a dense layer
-            3. Applies dropout again
-
-        The weights in the dense layer are initialized using He initialization and the biases are initialized to 0.
-
-        :param weight_matrix_dim: The dimension of the dense layer (num_of_inputs, num_of_outputs)
-        :param dropout_rate: The dropout layer for bot dropoout layers
-        :param activation_fn: A string representing the type of activation function to use at the dense layer
-        """
         self.dropout1 = Dropout(dropout_rate)
         self.dropout2 = Dropout(dropout_rate)
         self.dense = Dense_(units=weight_matrix_dim[1], activation=activation_fn, bias_initializer='zeros',
@@ -363,7 +378,8 @@ class Average_Predictions:
         return mean_prediction
 
 
-# taken directly from the original author's source
+# taken directly from the original author's source code.
+# returns a tensor of zeros or initialized with He initialization
 def initializer(init, shape):
     if init == "zero":
 
