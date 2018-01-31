@@ -57,11 +57,14 @@ class Experiment:
 
     def _create_config(self, params):
         model_dir = os.path.join(params['model_dir'], params['model_name'])
+        sess_config = tf.ConfigProto()
+        sess_config.gpu_options.allow_growth = True
         config = tf.estimator.RunConfig(model_dir=model_dir,
                                         tf_random_seed=params['tf_seed'],
                                         keep_checkpoint_max=2,
                                         save_summary_steps=1000000,
-                                        save_checkpoints_steps=100000)
+                                        save_checkpoints_steps=100000,
+                                        session_config=sess_config)
 
         return config
 
