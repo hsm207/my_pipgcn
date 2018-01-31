@@ -1,3 +1,7 @@
+"""
+This module contains stuff to help run the experiments.
+
+"""
 import datetime
 import os
 

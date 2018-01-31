@@ -1,3 +1,6 @@
+"""
+This module contains the classes that are used to build models.
+"""
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.keras.layers import Activation, Dropout

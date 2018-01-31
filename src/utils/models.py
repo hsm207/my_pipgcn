@@ -1,3 +1,7 @@
+"""
+This layer contains classes that implement the models described in the paper.
+"""
+
 from functools import reduce, partial
 
 from utils.layers import *

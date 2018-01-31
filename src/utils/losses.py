@@ -1,3 +1,7 @@
+"""
+This module implements the loss function described in the paper.
+"""
+
 import tensorflow as tf
 
 
